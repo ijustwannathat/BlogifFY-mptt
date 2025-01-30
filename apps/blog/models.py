@@ -1,7 +1,12 @@
 from django.db import models
+from django.urls import reverse
 from django.core.validators import FileExtensionValidator
 from django.contrib.auth.models import User
-from django.db.models import ForeignKey
+
+#inner libraries
+from ..services.utils import unique_slugify
+
+#third party libraries
 from mptt.models import TreeForeignKey, MPTTModel
 
 
@@ -13,7 +18,7 @@ class Post(models.Model):
     )
 
     title = models.CharField(verbose_name='Post Title', max_length=255)
-    slug = models.SlugField(verbose_name='URL', max_length=255, blank=True, unique=True)
+    slug = models.SlugField(verbose_name='URL', max_length=255, blank=True)
     description = models.TextField(verbose_name='Brief Description', max_length=500)
     text = models.TextField(verbose_name='Full Post Text')
     category = TreeForeignKey(
@@ -25,7 +30,7 @@ class Post(models.Model):
     thumbnail = models.ImageField(default='default.jpg',
         verbose_name='Post Image',
         blank=True,
-        upload_to='images/thumbnails/',
+        upload_to='images/thumbnails/%Y/%m/%d',
         validators=[FileExtensionValidator(allowed_extensions=('png', 'jpg', 'webp', 'jpeg', 'gif'))]
     )
     status = models.CharField(choices=STATUS_OPTIONS, default='published', verbose_name='Post Status', max_length=10)
@@ -47,8 +52,12 @@ class Post(models.Model):
     def __str__(self):
         return self.title
 
+    def get_absolute_url(self):
+        return reverse('post_detail',kwargs={'slug': self.slug})
 
-
+    def save(self, *args, **kwargs):
+        self.slug = unique_slugify(self, self.title, self.slug)
+        super().save(*args, **kwargs)
 
 class Category(MPTTModel):
     title = models.CharField(max_length=255, verbose_name='Category Title')
